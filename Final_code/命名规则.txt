@@ -1,0 +1,15 @@
+Invert文件命名：
+invert_起始点_优化算法_迭代次数_实验样本数_备注.py
+//
+起始点：
+1.ori：周博磊老师论文提供的Encoder
+2.modi：许志钦老师论文改进的Encoder
+3.sampling：使用MCMC采样算法得到的起始点
+//
+优化算法：
+1.Adam
+2.ADO:Alternating Direction Optimization
+//
+实验样本数：测试集图片数量
+//
+备注：根据实验对应

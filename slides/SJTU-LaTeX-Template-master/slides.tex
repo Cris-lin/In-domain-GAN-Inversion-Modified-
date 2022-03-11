@@ -1,0 +1,295 @@
+% Copyright 2019 by SizheWei <sizhewei@sjtu.edu.cn>.
+
+\documentclass[9pt]{beamer}
+% these codes for chinese characters input, if you meet problems with these codes, you can feel free to comment them, or you can try to change your build method to "xelatex"
+%\documentclass[xcolor=dvipsnames]{beamer}
+\usepackage{xeCJK}
+
+% For convenience, some of the topics are listed here for users to use.
+
+%\usetheme{AnnArbor}
+%\usetheme{Antibes}
+%\usetheme{Bergen}
+% \usetheme{Berkeley}
+%\usetheme{Berlin}
+%\usetheme{Boadilla}
+% \usetheme{boxes}
+\usetheme{CambridgeUS}
+%\usetheme{Copenhagen}
+%\usetheme{Darmstadt}
+% \usetheme{default}
+%\usetheme{Frankfurt}
+%\usetheme{Goettingen}
+%\usetheme{Hannover}
+% \usetheme{Ilmenau}
+% \usetheme{JuanLesPins}
+%  \usetheme{Luebeck}
+%\usetheme{Madrid}
+% \usetheme{Malmoe}
+%\usetheme{Marburg}
+% \usetheme{Montpellier}
+% \usetheme{PaloAlto}
+% \usetheme{Pittsburgh}
+% \usetheme{Rochester}
+% \usetheme{Singapore}
+% \usetheme{Szeged}
+% \usetheme{Warsaw}
+
+\definecolor{sjtu-red}{RGB}{184,45,40} 
+\definecolor{sjtu-white}{RGB}{255,255,255}
+\definecolor{sjtu-blue}{RGB}{21,65,146}
+\definecolor{sjtu-black}{RGB}{0,0,0}
+
+% Uncomment the following code to get the color gradient on the slide (Decaying from sjtu-red to sjtu-white).
+
+% \useoutertheme{shadow}
+% \usepackage{tikz}
+% \usetikzlibrary{shadings}
+% \colorlet{titleleft}{sjtu-red}
+% \colorlet{titleright}{sjtu-red!45!sjtu-white}
+% \makeatletter
+% \pgfdeclarehorizontalshading[titleleft,titleright]{beamer@frametitleshade}{\paperheight}{%
+%   color(0pt)=(titleleft);
+%   color(\paperwidth)=(titleright)}
+% \makeatother
+
+% End of gradient slide title effect.
+
+\setbeamercolor{section in head/foot}{bg=sjtu-blue, fg=sjtu-white}
+\setbeamercolor{subsection in head/foot}{bg=sjtu-blue, fg=sjtu-white}
+\setbeamercolor{frametitle}{bg=sjtu-red, fg=sjtu-black}
+\setbeamercolor{title}{bg=sjtu-red, fg=sjtu-white}
+\setbeamercolor{alerted text}{fg=sjtu-red}
+\setbeamercolor{block title}{fg=sjtu-blue}
+\setbeamercolor{block body}{fg=sjtu-black}
+
+\setbeamertemplate{theorems}[numbered]
+\setbeamertemplate{propositions}[numbered]
+
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\setbeamertemplate{title page}[default][colsep=-4bp,rounded=true, shadow=true]
+
+\title{应用MCMC方法的逆向GAN过程}
+
+%\subtitle{Sub-title}
+
+% You can uncommit one of this code block to change
+% from one-author's mode to muli-author's mode which is 
+% displayed in the title page.
+% \author{Authors' name}
+% \institute[Shanghai Jiao Tong University] % (optional, but mostly needed)
+% {
+%   School of Electronic Information and Electrical Engineering\\
+%   Shanghai Jiao Tong University
+% }
+
+%\author[]
+%{author1\inst{1} \and author2\inst{2}}
+
+\institute[SJTU] % (optional)
+{
+  %\inst{1}%
+  Department of Mathematics\\
+  Shanghai Jiao Tong University
+  %\and
+  %\inst{2} %
+  %Department of Computer Science\\
+  %Shanghai Jiao Tong University
+}
+
+\titlegraphic{
+  % Uncomment the other code line below to change the logo from English version to Chinese.  
+   % \includegraphics[width=4.4cm]{sjtu-logo}
+   \includegraphics[width=4cm]{sjtu-logo-en}
+}
+
+\date{2020年12月4日}
+
+% Uncomment this, if you want the table of contents to pop up at the beginning of each subsection:
+
+%\AtBeginSubsection[]
+%{
+%  \begin{frame}<beamer>{Outline}
+%    \tableofcontents[currentsection,currentsubsection]
+%  \end{frame}
+%}
+
+% End of the table-content part
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\logo{\includegraphics[height=1cm]{sjtu.png}}
+
+%\begin{frame}{Outline}
+%  \tableofcontents
+%\end{frame}
+
+\section{MCMC方法}
+
+
+\begin{frame}{问题}
+
+\begin{center}
+	\begin{figure}
+		\begin{centering}
+			\includegraphics[scale=0.5]{Graph1.png}
+		\par\end{centering}
+	\end{figure}
+\par\end{center}
+
+我们本次的算法主要在解决图中红圈位置的问题，即论文中所提及的以下最优化问题：
+
+\begin{equation}
+\begin{aligned}
+& z^{inv} = \mathop{\arg}\min\limits_{z} || x - G(z)||_{2} + \lambda_{3} ||F(x) - F(G(z))||_{2} + \lambda_{4} ||z-E(G(z))||_{2}
+\end{aligned}
+\end{equation}
+
+我们打算采用MCMC采样的方法代替论文中的随机梯度下降的方法来解决这个最优化问题。
+
+\end{frame}
+
+%\subsection{Quaisconvex Optimization}
+\begin{frame}{Metropolis-adjusted Langevin算法}
+
+Metropolis-adjusted Langevin算法是一种基于梯度信息的MCMC方法，利用了MCMC方法的形式对梯度下降法进行了改进，并引入了Metropolis-adjustment。
+
+具体算法如下：(MALA)
+
+\begin{equation}
+\begin{aligned}
+& input:x^{0}, stepsizes \{ h^{k}\}\\
+& for \  k = 0,1,2,\ldots,K-1 \ do\\
+& \qquad x^{k+1} \leftarrow x^{k} - h^{k}\bigtriangledown U(x^{k}) + \xi \\
+& \qquad if \ \  \frac{p(x^{k}|x^{k+1})p^{*}(x^{k})}{p(x^{k+1}|x^{k})p^{*}(x^{k+1})} < u \ then \\
+& \qquad \qquad x^{k+1} \leftarrow x^{k} \qquad \qquad \qquad \rhd Metropolis-adjustment\\
+& Return \ x^{k}
+\end{aligned}
+\end{equation}
+  	
+\end{frame}
+
+\begin{frame}{算法说明}
+
+\par 算法中$x^{k}$即为当前样本，即我们所求的latent code。在算法迭代过程中，每次对latent code进行采样，并以一定概率对样本进行接受-拒绝选择，并以最终的样本作为算法的结果。
+
+\par 其中$U$即为该问题中的损失函数，$\xi$是一个以0向量为均值，$2*h^{k}$为方差的正态随机变量，条件$p(x^{k}|x^{k+1})$符合以$x^{k} - h^{k}\bigtriangledown U(x^{k})$为均值的正态分布，$u$是一个$[0,1]$上的以均匀分布采样的随机数。
+
+
+   		
+\end{frame}
+
+\begin{frame}{实现}
+
+由于Encoder是由GAN生成的数据集训练所得，因此我们可以假设在Encoder的输出结果附近，存在一个我们所要求的目标latent code，因此我们利用梯度信息在Encoder的输出结果附近进行随机采样，取一个更优的采样结果作为最终的latent code，以此对计算结果进行优化。 
+
+我们将原来的实现中的利用Adam优化latent code的方法改为了利用MALA对该优化问题进行求解，
+希望通过速度更快的采样方法来替代了需要大量迭代的随机梯度下降方法。目前仍然在对算法的个参数进行进一步的调整优化中。
+\end{frame}
+
+% You can reveal the parts of a slide one at a time
+% with the \pause command:
+%\begin{frame}{Linear Problem}
+%  \begin{itemize}
+%  \item {
+%    First item.
+%    \pause % The slide will pause after showing the first item
+%    There is a later instruction!
+%    \pause
+    % Have you seen the difference?
+    % \pause
+%  }
+  % You can also specify when the content should appear
+  % by using <n->:
+%  \item<3-> Second item.
+%  \item<4> Third item. This one will disappear soon.
+  % or you can use the \uncover command to reveal general
+  % content (not just \items):
+%  \item<5-> {
+%    Fourth item. \uncover<6->{Extra text in the fifth item.}
+%  }
+%  \end{itemize}
+%\end{frame}
+
+
+%\subsection{Second Subsection}
+\begin{frame}{结果展示}
+
+\begin{figure}[htbp]
+	\centering
+		\begin{minipage}[t]{0.25\linewidth}
+			\centering
+			\includegraphics[width=1in]{000004_enc.png}
+		\end{minipage}
+
+		\begin{minipage}[t]{0.25\linewidth}
+			\centering
+			\includegraphics[width=1in]{000004_inv.png}
+		\end{minipage}
+
+		\begin{minipage}[t]{0.25\linewidth}
+			\centering
+			\includegraphics[width=1in]{000004_ori.png}
+		\end{minipage}
+\end{figure}
+
+\begin{figure}[htbp]
+	\centering
+	\begin{minipage}[t]{0.25\linewidth}
+		\centering
+		\includegraphics[width=1in]{000008_enc.png}
+	\end{minipage}
+	
+	\begin{minipage}[t]{0.25\linewidth}
+		\centering
+		\includegraphics[width=1in]{000008_inv.png}
+	\end{minipage}
+	
+	\begin{minipage}[t]{0.25\linewidth}
+		\centering
+		\includegraphics[width=1in]{000008_ori.png}
+	\end{minipage}
+\end{figure}
+
+	
+\end{frame}
+
+
+%\begin{frame}{Main Theorem}
+%\begin{theorem}
+%Theorem Statements. Example for citation \cite{Author1990}.
+%\end{theorem}
+
+%\begin{proof}
+%Proof of the theorem goes here.
+%\end{proof}
+%\end{frame}
+
+% Placing a * after \section means it will not show in the
+% outline or table of contents.
+
+% Bibliography section. Use \bibitem to add more bibliography items.
+%\section*{Bibliography}
+%\begin{frame}{Bibliography}
+%  \begin{thebibliography}{10}
+
+%  \bibitem{Author1990}
+%    A.~Author.
+%    \newblock {\em Handbook of Everything}.
+%    \newblock Some Press, 1990.
+
+%  \bibitem{Someone2000}
+%    S.~Someone.
+%    \newblock On this and that.
+%    \newblock {\em Journal of This and That}, 2(1):50--100,
+%    2000.
+
+%  \end{thebibliography}
+%\end{frame}
+
+\end{document}
